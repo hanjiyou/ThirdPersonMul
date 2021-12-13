@@ -8,6 +8,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Net/UnrealNetwork.h"
+#include "Engine/Engine.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AThirdPersonMPCharacter
@@ -45,6 +47,9 @@ AThirdPersonMPCharacter::AThirdPersonMPCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
+
+	MaxHealth = 100.0;
+	CurrentHealth = MaxHealth;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -75,7 +80,6 @@ void AThirdPersonMPCharacter::SetupPlayerInputComponent(class UInputComponent* P
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AThirdPersonMPCharacter::OnResetVR);
 }
-
 
 void AThirdPersonMPCharacter::OnResetVR()
 {
@@ -137,4 +141,49 @@ void AThirdPersonMPCharacter::MoveRight(float Value)
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
 	}
+}
+
+void AThirdPersonMPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AThirdPersonMPCharacter, CurrentHealth);
+}
+
+//客户端同步到从服务器变化的血量时，自动执行的repNotify
+void AThirdPersonMPCharacter::OnRep_CurrentHealth()
+{
+	OnHealthUpdate();
+}
+
+//响应玩家CurrentHealth发生的更改。目前只用于屏幕调试
+void AThirdPersonMPCharacter::OnHealthUpdate()
+{
+	if (IsLocallyControlled()) //主控客户端玩家
+	{
+		FString healthMessage = FString::Printf(TEXT("%s同学 你只剩余%f血量了"), *GetFName().ToString(), CurrentHealth);
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, healthMessage);
+		if (CurrentHealth <= 0) {
+			FString deadMsg = FString::Printf(TEXT("%s同学 你无了"), *GetFName().ToString());
+		}
+	};
+	if (GetLocalRole() == ROLE_Authority) //GS
+	{
+		FString healthMsg = FString::Printf(TEXT("%s同学 现在只剩余%f血量了"), *GetFName().ToString(), CurrentHealth);
+		GEngine->AddOnScreenDebugMessage(-1, 3, FColor::Red, healthMsg);
+	}
+}
+
+void AThirdPersonMPCharacter::SetCurrentHealth(float healthValue)
+{
+	if (GetLocalRole() == ROLE_Authority) {
+		CurrentHealth = FMath::Clamp(healthValue, 0.f, MaxHealth);
+		OnHealthUpdate();
+	}
+}
+
+float AThirdPersonMPCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	int newHealth = CurrentHealth - Damage;
+	SetCurrentHealth(newHealth);
+	return newHealth;
 }
