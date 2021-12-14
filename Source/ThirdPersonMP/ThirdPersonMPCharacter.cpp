@@ -50,6 +50,8 @@ AThirdPersonMPCharacter::AThirdPersonMPCharacter()
 
 	MaxHealth = 100.0;
 	CurrentHealth = MaxHealth;
+	FireRate = 0.5f;
+	bIsFiring = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -79,6 +81,8 @@ void AThirdPersonMPCharacter::SetupPlayerInputComponent(class UInputComponent* P
 
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AThirdPersonMPCharacter::OnResetVR);
+
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AThirdPersonMPCharacter::StartFire);
 }
 
 void AThirdPersonMPCharacter::OnResetVR()
@@ -186,4 +190,24 @@ float AThirdPersonMPCharacter::TakeDamage(float Damage, struct FDamageEvent cons
 	int newHealth = CurrentHealth - Damage;
 	SetCurrentHealth(newHealth);
 	return newHealth;
+}
+
+
+void AThirdPersonMPCharacter::StartFire()
+{
+	if (! bIsFiring) {
+		bIsFiring = true;
+		GetWorld()->GetTimerManager().SetTimer(FireTimerHandler, FireRate, &AThirdPersonMPCharacter::StopFire);
+		HandleFire();
+	}
+}
+
+void AThirdPersonMPCharacter::StopFire()
+{
+	bIsFiring = false;
+}
+
+void AThirdPersonMPCharacter::HandleFire_Implementation()
+{
+
 }

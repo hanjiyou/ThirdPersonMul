@@ -31,6 +31,13 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Gameplay")
+	float FireRate;
+
+	bool bIsFiring;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gameplay|Projectile")
+	TSubclassOf<class AThirdPersonMPProjectile> ProjectileClass;
 protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Health")
@@ -93,5 +100,17 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+	void StartFire();
+
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+	void StopFire();
+
+	FTimerHandle FireTimerHandler;
+
+	UFUNCTION(Server, Reliable)
+	void HandleFire();//server RPCº¯Êý
+
 };
 
