@@ -9,6 +9,7 @@
 #include "Particles/ParticleSystem.h"
 #include "Kismet/GameplayStatics.h" //用于访问基本游戏进程的函数
 #include "UObject/ConstructorHelpers.h" //提供一些有用的构造函数，以便设置组件
+#include "Engine/Engine.h"
 
 
 // Sets default values
@@ -18,6 +19,7 @@ AThirdPersonMPProjectile::AThirdPersonMPProjectile()
 	PrimaryActorTick.bCanEverTick = true;
 
 	bReplicates = true;
+	SetReplicatingMovement(true);
 	//球体碰撞组件
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("RootComponent"));
 	SphereComponent->InitSphereRadius(37.5f);
@@ -66,7 +68,7 @@ void AThirdPersonMPProjectile::Tick(float DeltaTime)
 
 }
 
-void AThirdPersonMPProjectile::Destroyed()
+void AThirdPersonMPProjectile::SpawnExplosionEffect()
 {
 	FVector spawnEffectLocation = GetActorLocation();
 	UGameplayStatics::SpawnEmitterAtLocation(this, ParticleSystem, spawnEffectLocation, FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
@@ -77,6 +79,9 @@ void AThirdPersonMPProjectile::OnProjectileImpact(UPrimitiveComponent* HitCompon
 	if (OtherActor) {
 		UGameplayStatics::ApplyPointDamage(OtherActor, Damage, NormalImpulse, Hit, GetInstigator()->Controller, this, DamageType);
 	}
-	Destroyed();
+	SpawnExplosionEffect();
+	if (GetLocalRole() == ROLE_Authority) {
+		SetActorLocation(FVector(9999999, 999999, 99999));
+	}
 }
 

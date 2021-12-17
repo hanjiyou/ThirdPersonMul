@@ -10,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/Engine.h"
+#include "ThirdPersonMPProjectile.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AThirdPersonMPCharacter
@@ -47,7 +48,7 @@ AThirdPersonMPCharacter::AThirdPersonMPCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
-
+	ProjectileClass = AThirdPersonMPProjectile::StaticClass();
 	MaxHealth = 100.0;
 	CurrentHealth = MaxHealth;
 	FireRate = 0.5f;
@@ -156,6 +157,13 @@ void AThirdPersonMPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 //客户端同步到从服务器变化的血量时，自动执行的repNotify
 void AThirdPersonMPCharacter::OnRep_CurrentHealth()
 {
+	if (IsLocallyControlled()) {//主控客户端玩家
+		FString deadMsg = FString::Printf(TEXT(" self=%s hp=%f"), *GetFName().ToString(), CurrentHealth);
+		UE_LOG(LogClass, Log, TEXT("hhh Client OnRep_CurrentHealth %s"), *deadMsg);
+	}
+	else {
+		UE_LOG(LogClass, Log, TEXT("hhh Client OnRep_CurrentHealth self"));
+	}
 	OnHealthUpdate();
 }
 
@@ -164,16 +172,19 @@ void AThirdPersonMPCharacter::OnHealthUpdate()
 {
 	if (IsLocallyControlled()) //主控客户端玩家
 	{
-		FString healthMessage = FString::Printf(TEXT("%s同学 你只剩余%f血量了"), *GetFName().ToString(), CurrentHealth);
-		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, healthMessage);
+		FString healthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, healthMessage);
+		FString deadMsg = FString::Printf(TEXT(" self=%s hp=%f"), *GetFName().ToString(), CurrentHealth);
+		UE_LOG(LogClass, Log, TEXT("hhh Client OnHealthUpdate %s"), *deadMsg);
 		if (CurrentHealth <= 0) {
-			FString deadMsg = FString::Printf(TEXT("%s同学 你无了"), *GetFName().ToString());
+			FString deathMessage = FString::Printf(TEXT("You have been killed."));
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, deathMessage);
 		}
 	};
 	if (GetLocalRole() == ROLE_Authority) //GS
 	{
-		FString healthMsg = FString::Printf(TEXT("%s同学 现在只剩余%f血量了"), *GetFName().ToString(), CurrentHealth);
-		GEngine->AddOnScreenDebugMessage(-1, 3, FColor::Red, healthMsg);
+		FString healthMsg = FString::Printf(TEXT("name %s remain%f hp"), *GetFName().ToString(), CurrentHealth);
+		UE_LOG(LogClass, Log, TEXT("hhh GS OnHealthUpdate %s"), *healthMsg);
 	}
 }
 
@@ -187,17 +198,23 @@ void AThirdPersonMPCharacter::SetCurrentHealth(float healthValue)
 
 float AThirdPersonMPCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (GetLocalRole() == ROLE_Authority) {
+		FName str_CharacterName = EventInstigator->GetFName();
+		FString CharacterName = str_CharacterName.ToString();
+		FString healthMessage = FString::Printf(TEXT("GS name=%s health remaining %f ."), *CharacterName, CurrentHealth);
+		UE_LOG(LogClass, Log, TEXT("GS 受伤"));
+	}
 	int newHealth = CurrentHealth - Damage;
 	SetCurrentHealth(newHealth);
 	return newHealth;
 }
 
-
+// 玩家在本地机器调用开火
 void AThirdPersonMPCharacter::StartFire()
 {
 	if (! bIsFiring) {
 		bIsFiring = true;
-		GetWorld()->GetTimerManager().SetTimer(FireTimerHandler, FireRate, &AThirdPersonMPCharacter::StopFire);
+		GetWorld()->GetTimerManager().SetTimer(FireTimerHandler, this, &AThirdPersonMPCharacter::StopFire, FireRate, false);
 		HandleFire();
 	}
 }
@@ -207,7 +224,14 @@ void AThirdPersonMPCharacter::StopFire()
 	bIsFiring = false;
 }
 
+// serverCharacter 收到开火的rpc
 void AThirdPersonMPCharacter::HandleFire_Implementation()
 {
-
+	FVector spawnLocation = GetActorLocation() + (GetControlRotation().Vector() * 100.0f) + GetActorUpVector() * 50.0f;
+	FRotator spawnRotation = GetControlRotation();
+	FActorSpawnParameters spawnParameters;
+	spawnParameters.Instigator = GetInstigator();
+	spawnParameters.Owner = this;
+	UWorld* world = GetWorld();
+	AThirdPersonMPProjectile* spawnedProjectile = world->SpawnActor<AThirdPersonMPProjectile>(spawnLocation, spawnRotation, spawnParameters);
 }
