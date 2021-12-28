@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "4.27",
+	"EngineAssociation": "{D73CC1F1-4C34-766A-77E7-13A348DE65B5}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -11,6 +11,12 @@
 			"AdditionalDependencies": [
 				"Engine"
 			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "OnlineSubsystemEOS",
+			"Enabled": true
 		}
 	]
 }
