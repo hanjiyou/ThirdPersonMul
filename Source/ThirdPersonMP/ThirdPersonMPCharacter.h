@@ -47,7 +47,7 @@ protected:
 	float CurrentHealth;
 
 	UFUNCTION()
-	void OnRep_CurrentHealth();
+	void OnRep_CurrentHealth(float LastHealth);
 
 	void OnHealthUpdate();
 

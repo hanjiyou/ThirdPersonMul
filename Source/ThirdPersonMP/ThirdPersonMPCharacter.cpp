@@ -155,14 +155,14 @@ void AThirdPersonMPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 }
 
 //客户端同步到从服务器变化的血量时，自动执行的repNotify
-void AThirdPersonMPCharacter::OnRep_CurrentHealth()
+void AThirdPersonMPCharacter::OnRep_CurrentHealth(float LastHealth)
 {
 	if (IsLocallyControlled()) {//主控客户端玩家
 		FString deadMsg = FString::Printf(TEXT(" self=%s hp=%f"), *GetFName().ToString(), CurrentHealth);
-		UE_LOG(LogClass, Log, TEXT("hhh Client OnRep_CurrentHealth %s"), *deadMsg);
+		UE_LOG(LogClass, Log, TEXT("hhh Client OnRep_CurrentHealth %s LastHealth=%f"), *deadMsg, LastHealth);
 	}
 	else {
-		UE_LOG(LogClass, Log, TEXT("hhh Client OnRep_CurrentHealth self"));
+		UE_LOG(LogClass, Log, TEXT("hhh Client OnRep_CurrentHealth self LastHealth=%f CurrentHealth=%f"), LastHealth, CurrentHealth);
 	}
 	OnHealthUpdate();
 }
